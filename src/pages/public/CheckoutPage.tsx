@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, Check, ChevronLeft } from 'lucide-react'
+import { Calendar, Clock, Check, ChevronLeft, AlertCircle } from 'lucide-react'
 import { useCart } from '../../contexts/CartContext'
+import { useCustomer } from '../../contexts/AuthContext'
+import { useOrders } from '../../lib/orders'
 import { format, addDays, isSameDay, startOfToday } from 'date-fns'
 
 const timeSlots = [
@@ -11,6 +13,8 @@ const timeSlots = [
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const { items, total, clearCart } = useCart()
+  const { user, profile } = useCustomer()
+  const { createOrder } = useOrders()
 
   const [step, setStep] = useState(1)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
@@ -22,9 +26,40 @@ export default function CheckoutPage() {
     notes: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  // Pre-fill form with user data if logged in
+  useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || ''
+      }))
+    }
+  }, [profile])
 
   const today = startOfToday()
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
+
+  // Filter available time slots for same-day pickup
+  const getAvailableTimeSlots = () => {
+    if (!selectedDate || !isSameDay(selectedDate, today)) {
+      return timeSlots
+    }
+    const now = new Date()
+    const cutoffHour = 14 // 2 PM cutoff for same-day orders
+    if (now.getHours() >= cutoffHour) {
+      return [] // No same-day pickup after 2 PM
+    }
+    return timeSlots.filter(time => {
+      const [hours] = time.split(':').map(Number)
+      return hours > now.getHours() + 1 // At least 1 hour preparation time
+    })
+  }
+
+  const availableTimeSlots = getAvailableTimeSlots()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -35,24 +70,43 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
     setIsSubmitting(true)
 
-    // Simulate order submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      const orderData = items.map(item => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price
+      }))
 
-    // Generate order number
-    const orderNumber = `AFB-${Math.floor(1000 + Math.random() * 9000)}`
+      const order = await createOrder(
+        user?.id || '',
+        formData.name,
+        formData.email,
+        formData.phone,
+        orderData,
+        selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
+        selectedTime,
+        formData.notes || undefined
+      )
 
-    // Clear cart and navigate to confirmation
-    clearCart()
-    navigate('/order-confirmation', {
-      state: {
-        orderNumber,
-        pickupDate: selectedDate ? format(selectedDate, 'EEEE, MMMM d') : '',
-        pickupTime: selectedTime,
-        total
-      }
-    })
+      clearCart()
+      navigate('/order-confirmation', {
+        state: {
+          orderNumber: order.order_number,
+          pickupDate: selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : '',
+          pickupTime: selectedTime,
+          total
+        }
+      })
+    } catch (err: any) {
+      console.error('Order creation error:', err)
+      setError(err.message || 'Failed to place order. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (items.length === 0) {
@@ -149,25 +203,31 @@ export default function CheckoutPage() {
               {selectedDate && (
                 <div>
                   <label className="label">Pickup Time</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {timeSlots.map(time => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => setSelectedTime(time)}
-                        className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-colors ${
-                          selectedTime === time
-                            ? 'bg-afri-terracotta-500 text-white'
-                            : 'bg-afri-cream-200 dark:bg-afri-earth-600 hover:bg-afri-cream-300 dark:hover:bg-afri-earth-500'
-                        }`}
-                      >
-                        <Clock className="w-4 h-4" />
-                        <span className="text-sm font-medium text-afri-brown-700 dark:text-afri-cream-200">
-                          {time}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  {availableTimeSlots.length === 0 ? (
+                    <p className="text-afri-terracotta-500 text-sm">
+                      No slots available for same-day pickup. Please select a future date.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {availableTimeSlots.map(time => (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => setSelectedTime(time)}
+                          className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-colors ${
+                            selectedTime === time
+                              ? 'bg-afri-terracotta-500 text-white'
+                              : 'bg-afri-cream-200 dark:bg-afri-earth-600 hover:bg-afri-cream-300 dark:hover:bg-afri-earth-500'
+                          }`}
+                        >
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm font-medium text-afri-brown-700 dark:text-afri-cream-200">
+                            {time}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -251,6 +311,13 @@ export default function CheckoutPage() {
               <h2 className="font-semibold text-lg text-afri-brown-700 dark:text-afri-cream-200">
                 Review Your Order
               </h2>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-afri-terracotta-50 dark:bg-afri-terracotta-900/20 text-afri-terracotta-600 dark:text-afri-terracotta-400 rounded-lg text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </div>
+              )}
 
               {/* Order Items */}
               <div className="space-y-3">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, User, AlertCircle, CheckCircle } from 'lucide-react'
 import { useCustomer } from '../../contexts/AuthContext'
 
 export default function RegisterPage() {
@@ -15,6 +15,7 @@ export default function RegisterPage() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,12 +43,44 @@ export default function RegisterPage() {
 
     try {
       await register(formData.email, formData.password, formData.name)
-      navigate('/account')
-    } catch (err) {
-      setError('Unable to create account. Please try again.')
+      setSuccess(true)
+      setTimeout(() => {
+        navigate('/account')
+      }, 2000)
+    } catch (err: any) {
+      console.error('Registration error:', err)
+      if (err.message?.includes('already registered')) {
+        setError('An account with this email already exists.')
+      } else if (err.message?.includes('invalid email')) {
+        setError('Please enter a valid email address.')
+      } else if (err.message?.includes('password')) {
+        setError('Password is too weak. Please use at least 6 characters.')
+      } else {
+        setError(err.message || 'Unable to create account. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-afri-cream-100 dark:bg-afri-earth-800 px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="font-display text-2xl font-bold text-afri-brown-700 dark:text-afri-cream-200 mb-2">
+              Account Created!
+            </h2>
+            <p className="text-afri-earth-600 dark:text-afri-cream-400 mb-4">
+              Welcome to AfriBake. Redirecting you to your account...
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -67,7 +100,8 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-afri-earth-700 rounded-xl p-6 space-y-6">
           {error && (
-            <div className="bg-afri-terracotta-50 dark:bg-afri-terracotta-900/20 border border-afri-terracotta-200 dark:border-afri-terracotta-700 rounded-lg p-3 text-sm text-afri-terracotta-600 dark:text-afri-terracotta-400">
+            <div className="flex items-center gap-3 bg-afri-terracotta-50 dark:bg-afri-terracotta-900/20 border border-afri-terracotta-200 dark:border-afri-terracotta-700 rounded-lg p-3 text-sm text-afri-terracotta-600 dark:text-afri-terracotta-400">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
               {error}
             </div>
           )}
@@ -88,6 +122,7 @@ export default function RegisterPage() {
                 className="input pl-10"
                 placeholder="John Doe"
                 required
+                autoComplete="name"
               />
             </div>
           </div>
@@ -108,6 +143,7 @@ export default function RegisterPage() {
                 className="input pl-10"
                 placeholder="you@example.com"
                 required
+                autoComplete="email"
               />
             </div>
           </div>
@@ -128,6 +164,7 @@ export default function RegisterPage() {
                 className="input pl-10 pr-10"
                 placeholder="Min. 6 characters"
                 required
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -155,6 +192,7 @@ export default function RegisterPage() {
                 className="input pl-10"
                 placeholder="Confirm password"
                 required
+                autoComplete="new-password"
               />
             </div>
           </div>

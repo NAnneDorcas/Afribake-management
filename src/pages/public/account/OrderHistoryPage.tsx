@@ -1,40 +1,17 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { RotateCcw, Calendar, Clock } from 'lucide-react'
-
-const mockOrders = [
-  {
-    id: '1',
-    orderNumber: 'AFB-1001',
-    status: 'ready_for_pickup',
-    total: 19.00,
-    pickupDate: '2024-06-15',
-    pickupTime: '09:00',
-    items: [
-      { productId: '1', productName: 'Puff Puff', quantity: 4, price: 2.50 },
-      { productId: '3', productName: 'Meat Pie', quantity: 2, price: 4.50 }
-    ]
-  },
-  {
-    id: '2',
-    orderNumber: 'AFB-0998',
-    status: 'completed',
-    total: 15.00,
-    pickupDate: '2024-06-10',
-    pickupTime: '11:00',
-    items: [
-      { productId: '6', productName: 'Coconut Bread', quantity: 1, price: 6.00 },
-      { productId: '2', productName: 'Chin Chin', quantity: 3, price: 3.00 }
-    ]
-  }
-]
+import { RotateCcw, Calendar, Clock, Package } from 'lucide-react'
+import { useCustomer } from '../../../contexts/AuthContext'
+import { useOrders } from '../../../lib/orders'
+import type { OrderWithItems } from '../../../lib/orders'
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-afri-gold-100 text-afri-gold-700',
-  confirmed: 'bg-afri-gold-100 text-afri-gold-700',
-  in_preparation: 'bg-afri-brown-100 text-afri-brown-700',
-  ready_for_pickup: 'bg-afri-terracotta-100 text-afri-terracotta-700',
-  completed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700'
+  pending: 'bg-afri-gold-100 text-afri-gold-700 dark:bg-afri-gold-900/30 dark:text-afri-gold-400',
+  confirmed: 'bg-afri-gold-100 text-afri-gold-700 dark:bg-afri-gold-900/30 dark:text-afri-gold-400',
+  in_preparation: 'bg-afri-brown-100 text-afri-brown-700 dark:bg-afri-brown-700/50 dark:text-afri-brown-300',
+  ready_for_pickup: 'bg-afri-terracotta-100 text-afri-terracotta-700 dark:bg-afri-terracotta-900/30 dark:text-afri-terracotta-400',
+  completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
 }
 
 const statusLabels: Record<string, string> = {
@@ -47,8 +24,28 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function OrderHistoryPage() {
-  const upcomingOrders = mockOrders.filter(o => ['pending', 'confirmed', 'in_preparation', 'ready_for_pickup'].includes(o.status))
-  const pastOrders = mockOrders.filter(o => ['completed', 'cancelled'].includes(o.status))
+  const { user } = useCustomer()
+  const { orders, isLoading, fetchOrders } = useOrders()
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders(user.id)
+    }
+  }, [user])
+
+  const upcomingStatuses = ['pending', 'confirmed', 'in_preparation', 'ready_for_pickup']
+  const upcomingOrders = orders.filter(o => upcomingStatuses.includes(o.status))
+  const pastOrders = orders.filter(o => !upcomingStatuses.includes(o.status))
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-afri-terracotta-500"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -59,9 +56,15 @@ export default function OrderHistoryPage() {
         </h2>
 
         {upcomingOrders.length === 0 ? (
-          <p className="text-afri-earth-600 dark:text-afri-cream-400 text-center py-8">
-            No upcoming orders.
-          </p>
+          <div className="text-center py-8">
+            <Package className="w-12 h-12 text-afri-earth-400 mx-auto mb-4" />
+            <p className="text-afri-earth-600 dark:text-afri-cream-400 mb-4">
+              No upcoming orders.
+            </p>
+            <Link to="/shop" className="btn-primary">
+              Start Shopping
+            </Link>
+          </div>
         ) : (
           <div className="space-y-4">
             {upcomingOrders.map(order => (
@@ -72,43 +75,39 @@ export default function OrderHistoryPage() {
       </div>
 
       {/* Past Orders */}
-      <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6">
-        <h2 className="font-display text-xl font-bold text-afri-brown-700 dark:text-afri-cream-200 mb-6">
-          Order History
-        </h2>
+      {pastOrders.length > 0 && (
+        <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6">
+          <h2 className="font-display text-xl font-bold text-afri-brown-700 dark:text-afri-cream-200 mb-6">
+            Order History
+          </h2>
 
-        {pastOrders.length === 0 ? (
-          <p className="text-afri-earth-600 dark:text-afri-cream-400 text-center py-8">
-            No past orders.
-          </p>
-        ) : (
           <div className="space-y-4">
             {pastOrders.map(order => (
               <OrderCard key={order.id} order={order} />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function OrderCard({ order }: { order: typeof mockOrders[0] }) {
+function OrderCard({ order }: { order: OrderWithItems }) {
   return (
     <div className="border border-afri-earth-200 dark:border-afri-earth-600 rounded-lg p-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <p className="font-medium text-afri-brown-700 dark:text-afri-cream-200">
-            Order #{order.orderNumber}
+            Order #{order.order_number}
           </p>
           <div className="flex items-center gap-4 text-sm text-afri-earth-600 dark:text-afri-cream-400 mt-1">
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              {order.pickupDate}
+              {order.pickup_date}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
-              {order.pickupTime}
+              {order.pickup_time}
             </span>
           </div>
         </div>
@@ -119,10 +118,10 @@ function OrderCard({ order }: { order: typeof mockOrders[0] }) {
 
       <div className="border-t border-afri-earth-200 dark:border-afri-earth-600 pt-4">
         <div className="space-y-2 mb-4">
-          {order.items.map(item => (
-            <div key={item.productId} className="flex justify-between text-sm">
+          {order.items.map((item, idx) => (
+            <div key={idx} className="flex justify-between text-sm">
               <span className="text-afri-earth-600 dark:text-afri-cream-400">
-                {item.quantity}x {item.productName}
+                {item.quantity}x {item.product_name}
               </span>
               <span className="text-afri-brown-700 dark:text-afri-cream-200">
                 ${(item.quantity * item.price).toFixed(2)}
@@ -133,7 +132,7 @@ function OrderCard({ order }: { order: typeof mockOrders[0] }) {
 
         <div className="flex items-center justify-between">
           <p className="font-semibold text-afri-brown-700 dark:text-afri-cream-200">
-            Total: ${order.total.toFixed(2)}
+            Total: ${Number(order.total).toFixed(2)}
           </p>
           <div className="flex gap-2">
             {order.status === 'completed' && (

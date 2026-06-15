@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { useCustomer } from '../../contexts/AuthContext'
 
 export default function LoginPage() {
@@ -24,8 +24,15 @@ export default function LoginPage() {
     try {
       await login(email, password)
       navigate(from, { replace: true })
-    } catch (err) {
-      setError('Invalid email or password. Please try again.')
+    } catch (err: any) {
+      console.error('Login error:', err)
+      if (err.message?.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please try again.')
+      } else if (err.message?.includes('Email not confirmed')) {
+        setError('Please check your email to confirm your account.')
+      } else {
+        setError(err.message || 'Unable to sign in. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -48,7 +55,8 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-afri-earth-700 rounded-xl p-6 space-y-6">
           {error && (
-            <div className="bg-afri-terracotta-50 dark:bg-afri-terracotta-900/20 border border-afri-terracotta-200 dark:border-afri-terracotta-700 rounded-lg p-3 text-sm text-afri-terracotta-600 dark:text-afri-terracotta-400">
+            <div className="flex items-center gap-3 bg-afri-terracotta-50 dark:bg-afri-terracotta-900/20 border border-afri-terracotta-200 dark:border-afri-terracotta-700 rounded-lg p-3 text-sm text-afri-terracotta-600 dark:text-afri-terracotta-400">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
               {error}
             </div>
           )}
@@ -68,6 +76,7 @@ export default function LoginPage() {
                 className="input pl-10"
                 placeholder="you@example.com"
                 required
+                autoComplete="email"
               />
             </div>
           </div>
@@ -87,6 +96,7 @@ export default function LoginPage() {
                 className="input pl-10 pr-10"
                 placeholder="Enter your password"
                 required
+                autoComplete="current-password"
               />
               <button
                 type="button"

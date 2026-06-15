@@ -1,49 +1,68 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import { Customer } from '../types'
+import type { User } from '@supabase/supabase-js'
+
+export interface Profile {
+  id: string
+  email: string
+  name: string | null
+  phone: string | null
+  preferred_pickup_time: string | null
+  created_at: string
+  updated_at: string
+}
 
 interface CustomerContextType {
-  customer: Customer | null
+  user: User | null
+  profile: Profile | null
   isAuthenticated: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
   logout: () => Promise<void>
-  updateProfile: (data: Partial<Customer>) => Promise<void>
+  updateProfile: (data: Partial<Profile>) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
 }
 
 const CustomerContext = createContext<CustomerContextType | undefined>(undefined)
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
-  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const getSession = async () => {
+    // Get initial session
+    const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
+        setUser(session.user)
         const { data } = await supabase
-          .from('customer_profiles')
+          .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
-        setCustomer(data)
+        setProfile(data)
       }
       setIsLoading(false)
     }
-    getSession()
+    getInitialSession()
 
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
+          setUser(session.user)
+          // Fetch profile after auth state change
           const { data } = await supabase
-            .from('customer_profiles')
+            .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single()
-          setCustomer(data)
+          setProfile(data)
         } else {
-          setCustomer(null)
+          setUser(null)
+          setProfile(null)
         }
       }
     )
@@ -60,46 +79,55 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        data: {
+          name: name
+        }
+      }
     })
     if (error) throw error
-
-    if (data.user) {
-      await supabase.from('customer_profiles').insert({
-        id: data.user.id,
-        email,
-        name
-      })
-    }
+    // Profile is automatically created via database trigger
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    setCustomer(null)
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+    setUser(null)
+    setProfile(null)
   }
 
-  const updateProfile = async (data: Partial<Customer>) => {
-    if (!customer) return
+  const updateProfile = async (data: Partial<Profile>) => {
+    if (!user) return
     const { error } = await supabase
-      .from('customer_profiles')
+      .from('profiles')
       .update(data)
-      .eq('id', customer.id)
+      .eq('id', user.id)
     if (error) throw error
-    setCustomer({ ...customer, ...data })
+    setProfile(prev => prev ? { ...prev, ...data } : null)
+  }
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    })
+    if (error) throw error
   }
 
   return (
     <CustomerContext.Provider
       value={{
-        customer,
-        isAuthenticated: !!customer,
+        user,
+        profile,
+        isAuthenticated: !!user,
         isLoading,
         login,
         register,
         logout,
-        updateProfile
+        updateProfile,
+        resetPassword
       }}
     >
       {children}

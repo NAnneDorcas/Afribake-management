@@ -14,7 +14,7 @@ const navItems = [
 ]
 
 export default function AccountPage() {
-  const { customer, logout } = useCustomer()
+  const { profile, logout } = useCustomer()
 
   return (
     <div className="min-h-screen bg-afri-cream-100 dark:bg-afri-earth-800">
@@ -25,7 +25,7 @@ export default function AccountPage() {
             My Account
           </h1>
           <p className="mt-2 text-afri-cream-300">
-            {customer?.email || 'Manage your account'}
+            {profile?.email || 'Manage your account'}
           </p>
         </div>
       </div>

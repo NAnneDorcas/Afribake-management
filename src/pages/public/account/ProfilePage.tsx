@@ -1,26 +1,33 @@
 import { useState } from 'react'
 import { useCustomer } from '../../../contexts/AuthContext'
+import { Check } from 'lucide-react'
 
 export default function ProfilePage() {
-  const { customer, updateProfile } = useCustomer()
+  const { profile, updateProfile } = useCustomer()
   const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [formData, setFormData] = useState({
-    name: customer?.name || '',
-    email: customer?.email || '',
-    phone: customer?.phone || '',
-    preferred_pickup_time: customer?.preferred_pickup_time || ''
+    name: profile?.name || '',
+    phone: profile?.phone || '',
+    preferred_pickup_time: profile?.preferred_pickup_time || ''
   })
 
   const handleSave = async () => {
+    setIsSaving(true)
     try {
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
         preferred_pickup_time: formData.preferred_pickup_time
       })
+      setSaved(true)
       setIsEditing(false)
+      setTimeout(() => setSaved(false), 3000)
     } catch (error) {
       console.error('Failed to update profile', error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -40,6 +47,13 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {saved && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg text-sm">
+          <Check className="w-4 h-4" />
+          Profile updated successfully!
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-6">
         <div>
           <label className="label">Full Name</label>
@@ -49,6 +63,7 @@ export default function ProfilePage() {
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
               className="input"
+              placeholder="Your name"
             />
           ) : (
             <p className="text-afri-brown-700 dark:text-afri-cream-200 py-3">
@@ -60,7 +75,7 @@ export default function ProfilePage() {
         <div>
           <label className="label">Email Address</label>
           <p className="text-afri-brown-700 dark:text-afri-cream-200 py-3">
-            {formData.email}
+            {profile?.email}
           </p>
         </div>
 
@@ -96,7 +111,9 @@ export default function ProfilePage() {
             </select>
           ) : (
             <p className="text-afri-brown-700 dark:text-afri-cream-200 py-3">
-              {formData.preferred_pickup_time || 'No preference'}
+              {formData.preferred_pickup_time
+                ? formData.preferred_pickup_time.charAt(0).toUpperCase() + formData.preferred_pickup_time.slice(1)
+                : 'No preference'}
             </p>
           )}
         </div>
@@ -104,24 +121,28 @@ export default function ProfilePage() {
 
       {isEditing && (
         <div className="flex gap-3 mt-6 pt-6 border-t border-afri-earth-200 dark:border-afri-earth-600">
-          <button onClick={handleSave} className="btn-primary">
-            Save Changes
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="btn-primary disabled:opacity-50"
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
-          <button onClick={() => setIsEditing(false)} className="btn-outline">
+          <button
+            onClick={() => {
+              setIsEditing(false)
+              setFormData({
+                name: profile?.name || '',
+                phone: profile?.phone || '',
+                preferred_pickup_time: profile?.preferred_pickup_time || ''
+              })
+            }}
+            className="btn-outline"
+          >
             Cancel
           </button>
         </div>
       )}
-
-      {/* Danger Zone */}
-      <div className="mt-8 pt-6 border-t border-afri-earth-200 dark:border-afri-earth-600">
-        <h3 className="font-medium text-afri-brown-700 dark:text-afri-cream-200 mb-4">
-          Password
-        </h3>
-        <button className="btn-outline">
-          Change Password
-        </button>
-      </div>
     </div>
   )
 }

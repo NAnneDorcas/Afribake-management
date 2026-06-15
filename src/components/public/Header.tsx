@@ -9,7 +9,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { itemCount } = useCart()
   const { theme, toggleTheme } = useTheme()
-  const { customer, isAuthenticated } = useCustomer()
+  const { profile, isAuthenticated } = useCustomer()
   const location = useLocation()
 
   const navLinks = [
@@ -85,7 +85,7 @@ export default function Header() {
               >
                 <User className="w-5 h-5 text-afri-earth-700 dark:text-afri-cream-300" />
                 <span className="text-sm font-medium text-afri-earth-700 dark:text-afri-cream-300">
-                  {customer?.name?.split(' ')[0] || 'Account'}
+                  {profile?.name?.split(' ')[0] || 'Account'}
                 </span>
               </Link>
             ) : (
