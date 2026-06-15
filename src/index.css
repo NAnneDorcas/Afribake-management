@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans antialiased bg-afri-cream-100 text-afri-earth-700;
+  }
+
+  .dark body {
+    @apply bg-afri-earth-800 text-afri-cream-200;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-afri-terracotta-500 text-white font-medium rounded-lg transition-all duration-200 hover:bg-afri-terracotta-600 focus:ring-2 focus:ring-afri-terracotta-300 focus:outline-none shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-afri-brown-700 text-white font-medium rounded-lg transition-all duration-200 hover:bg-afri-brown-800 focus:ring-2 focus:ring-afri-brown-500 focus:outline-none shadow-sm hover:shadow-md;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 border-2 border-afri-terracotta-500 text-afri-terracotta-600 font-medium rounded-lg transition-all duration-200 hover:bg-afri-terracotta-500 hover:text-white focus:ring-2 focus:ring-afri-terracotta-300 focus:outline-none;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-md overflow-hidden transition-all duration-200 hover:shadow-lg;
+  }
+
+  .dark .card {
+    @apply bg-afri-earth-700;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 rounded-lg border border-afri-earth-300 bg-white text-afri-earth-700 focus:ring-2 focus:ring-afri-terracotta-300 focus:border-afri-terracotta-500 focus:outline-none transition-all duration-200;
+  }
+
+  .dark .input {
+    @apply bg-afri-earth-700 border-afri-earth-600 text-afri-cream-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-afri-earth-600 mb-2;
+  }
+
+  .dark .label {
+    @apply text-afri-cream-400;
+  }
+}
