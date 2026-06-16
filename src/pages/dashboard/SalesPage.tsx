@@ -1,6 +1,6 @@
 import { Search, Eye } from 'lucide-react'
-import { useState } from 'react'
-import { demoOrders } from '../../data/products'
+import { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 
 const statusColors: Record<string, string> = {
   pending: 'bg-afri-gold-100 text-afri-gold-700 dark:bg-afri-gold-900/30 dark:text-afri-gold-400',
@@ -21,22 +21,65 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function SalesPage() {
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const filteredOrders = demoOrders.filter(order => {
+  useEffect(() => {
+    loadOrders()
+  }, [])
+
+  const loadOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (*)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error(error)
+        return
+      }
+
+      setOrders(data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredOrders = orders.filter(order => {
     if (statusFilter !== 'all' && order.status !== statusFilter) return false
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      if (!order.customer_name.toLowerCase().includes(query) &&
-          !order.order_number.toLowerCase().includes(query)) {
-        return false
-      }
+
+      return (
+        order.customer_name?.toLowerCase().includes(query) ||
+        order.order_number?.toLowerCase().includes(query)
+      )
     }
+
     return true
   })
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + o.total, 0)
+  const totalRevenue = filteredOrders.reduce(
+    (sum, order) => sum + Number(order.total || 0),
+    0
+  )
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p>Loading orders...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -49,10 +92,10 @@ export default function SalesPage() {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+
           <input
             type="text"
             placeholder="Search by name or order number..."
@@ -61,6 +104,7 @@ export default function SalesPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-afri-earth-600 rounded-lg bg-white dark:bg-afri-earth-700 text-gray-900 dark:text-afri-cream-200"
           />
         </div>
+
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
@@ -72,94 +116,105 @@ export default function SalesPage() {
           <option value="in_preparation">In Preparation</option>
           <option value="ready_for_pickup">Ready for Pickup</option>
           <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
         </select>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-afri-earth-800 rounded-xl p-4 border border-gray-200 dark:border-afri-earth-700">
-          <p className="text-sm text-gray-500 dark:text-afri-cream-400">Total Orders</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-afri-cream-200">{filteredOrders.length}</p>
+          <p className="text-sm text-gray-500 dark:text-afri-cream-400">
+            Total Orders
+          </p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-afri-cream-200">
+            {filteredOrders.length}
+          </p>
         </div>
+
         <div className="bg-white dark:bg-afri-earth-800 rounded-xl p-4 border border-gray-200 dark:border-afri-earth-700">
-          <p className="text-sm text-gray-500 dark:text-afri-cream-400">Total Revenue</p>
-          <p className="text-2xl font-bold text-afri-gold-600">${totalRevenue.toFixed(0)}</p>
+          <p className="text-sm text-gray-500 dark:text-afri-cream-400">
+            Total Revenue
+          </p>
+          <p className="text-2xl font-bold text-afri-gold-600">
+            ${totalRevenue.toFixed(2)}
+          </p>
         </div>
+
         <div className="bg-white dark:bg-afri-earth-800 rounded-xl p-4 border border-gray-200 dark:border-afri-earth-700">
-          <p className="text-sm text-gray-500 dark:text-afri-cream-400">Pending</p>
-          <p className="text-2xl font-bold text-afri-terracotta-500">{filteredOrders.filter(o => o.status === 'pending').length}</p>
+          <p className="text-sm text-gray-500 dark:text-afri-cream-400">
+            Pending
+          </p>
+          <p className="text-2xl font-bold text-afri-terracotta-500">
+            {filteredOrders.filter(o => o.status === 'pending').length}
+          </p>
         </div>
+
         <div className="bg-white dark:bg-afri-earth-800 rounded-xl p-4 border border-gray-200 dark:border-afri-earth-700">
-          <p className="text-sm text-gray-500 dark:text-afri-cream-400">Ready</p>
-          <p className="text-2xl font-bold text-green-600">{filteredOrders.filter(o => o.status === 'ready_for_pickup').length}</p>
+          <p className="text-sm text-gray-500 dark:text-afri-cream-400">
+            Ready
+          </p>
+          <p className="text-2xl font-bold text-green-600">
+            {filteredOrders.filter(o => o.status === 'ready_for_pickup').length}
+          </p>
         </div>
       </div>
 
-      {/* Orders Table */}
       <div className="bg-white dark:bg-afri-earth-800 rounded-xl border border-gray-200 dark:border-afri-earth-700 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-afri-earth-700">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Order
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Customer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Items
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Total
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Pickup
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-afri-cream-400 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left">Order</th>
+              <th className="px-6 py-3 text-left">Customer</th>
+              <th className="px-6 py-3 text-left">Items</th>
+              <th className="px-6 py-3 text-center">Total</th>
+              <th className="px-6 py-3 text-center">Pickup</th>
+              <th className="px-6 py-3 text-center">Status</th>
+              <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-afri-earth-700">
+
+          <tbody>
             {filteredOrders.map(order => (
-              <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-afri-earth-700/50">
+              <tr key={order.id}>
                 <td className="px-6 py-4">
-                  <p className="font-medium text-gray-900 dark:text-afri-cream-200">
-                    {order.order_number}
-                  </p>
+                  {order.order_number}
                 </td>
+
                 <td className="px-6 py-4">
-                  <p className="font-medium text-gray-900 dark:text-afri-cream-200">
-                    {order.customer_name}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-afri-cream-400">
+                  <p>{order.customer_name}</p>
+                  <p className="text-xs text-gray-500">
                     {order.customer_email}
                   </p>
                 </td>
+
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-600 dark:text-afri-cream-400">
-                    {order.items.map(item => (
-                      <p key={item.product_id}>
-                        {item.quantity}x {item.product_name}
-                      </p>
-                    ))}
-                  </div>
+                  {(order.order_items || []).map((item: any) => (
+                    <p key={item.id}>
+                      {item.quantity}x {item.product_name}
+                    </p>
+                  ))}
                 </td>
-                <td className="px-6 py-4 text-center font-semibold text-gray-900 dark:text-afri-cream-200">
-                  ${order.total.toFixed(2)}
-                </td>
+
                 <td className="px-6 py-4 text-center">
-                  <p className="font-medium text-gray-900 dark:text-afri-cream-200">{order.pickup_date}</p>
-                  <p className="text-xs text-gray-500 dark:text-afri-cream-400">{order.pickup_time}</p>
+                  ${Number(order.total).toFixed(2)}
                 </td>
+
                 <td className="px-6 py-4 text-center">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status]}`}>
+                  <p>{order.pickup_date}</p>
+                  <p className="text-xs text-gray-500">
+                    {order.pickup_time}
+                  </p>
+                </td>
+
+                <td className="px-6 py-4 text-center">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      statusColors[order.status]
+                    }`}
+                  >
                     {statusLabels[order.status]}
                   </span>
                 </td>
+
                 <td className="px-6 py-4 text-right">
                   <button className="p-1 text-gray-400 hover:text-afri-terracotta-500">
                     <Eye className="w-5 h-5" />

@@ -49,7 +49,6 @@ export default function OrderHistoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Upcoming Orders */}
       <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6">
         <h2 className="font-display text-xl font-bold text-afri-brown-700 dark:text-afri-cream-200 mb-6">
           Upcoming Orders
@@ -74,7 +73,6 @@ export default function OrderHistoryPage() {
         )}
       </div>
 
-      {/* Past Orders */}
       {pastOrders.length > 0 && (
         <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6">
           <h2 className="font-display text-xl font-bold text-afri-brown-700 dark:text-afri-cream-200 mb-6">

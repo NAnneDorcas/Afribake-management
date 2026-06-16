@@ -37,10 +37,10 @@ export interface CartItem {
 export interface Customer {
   id: string
   email: string
-  name: string
+  full_name: string
   phone?: string
   preferred_pickup_time?: string
-  created_at: string
+  created_at?: string
 }
 
 export interface Order {

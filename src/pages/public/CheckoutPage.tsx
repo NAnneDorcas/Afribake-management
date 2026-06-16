@@ -13,7 +13,7 @@ const timeSlots = [
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const { items, total, clearCart } = useCart()
-  const { user, profile } = useCustomer()
+  const { user, profile, isAuthenticated } = useCustomer()
   const { createOrder } = useOrders()
 
   const [step, setStep] = useState(1)
@@ -28,7 +28,6 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // Pre-fill form with user data if logged in
   useEffect(() => {
     if (profile) {
       setFormData(prev => ({
@@ -43,19 +42,18 @@ export default function CheckoutPage() {
   const today = startOfToday()
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
 
-  // Filter available time slots for same-day pickup
   const getAvailableTimeSlots = () => {
     if (!selectedDate || !isSameDay(selectedDate, today)) {
       return timeSlots
     }
     const now = new Date()
-    const cutoffHour = 14 // 2 PM cutoff for same-day orders
+    const cutoffHour = 14
     if (now.getHours() >= cutoffHour) {
-      return [] // No same-day pickup after 2 PM
+      return []
     }
     return timeSlots.filter(time => {
       const [hours] = time.split(':').map(Number)
-      return hours > now.getHours() + 1 // At least 1 hour preparation time
+      return hours > now.getHours() + 1
     })
   }
 
@@ -117,12 +115,10 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-afri-cream-100 dark:bg-afri-earth-800">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <h1 className="font-display text-3xl font-bold text-afri-brown-700 dark:text-afri-cream-200 mb-8">
           Checkout
         </h1>
 
-        {/* Progress Steps */}
         <div className="flex items-center justify-center mb-8">
           {[
             { num: 1, label: 'Pickup Time' },
@@ -160,7 +156,6 @@ export default function CheckoutPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Step 1: Pickup Time */}
           {step === 1 && (
             <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6">
               <div className="flex items-center gap-2 mb-6">
@@ -170,7 +165,6 @@ export default function CheckoutPage() {
                 </h2>
               </div>
 
-              {/* Date Selection */}
               <div className="mb-6">
                 <label className="label">Pickup Date</label>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
@@ -199,7 +193,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Time Selection */}
               {selectedDate && (
                 <div>
                   <label className="label">Pickup Time</label>
@@ -233,10 +226,8 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Step 2: Details */}
           {step === 2 && (
             <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6 space-y-6">
-              {/* Pickup Summary */}
               <div className="bg-afri-terracotta-50 dark:bg-afri-terracotta-900/20 rounded-lg p-4 mb-6">
                 <div className="flex items-center gap-2 mb-1">
                   <Calendar className="w-4 h-4 text-afri-terracotta-500" />
@@ -249,6 +240,17 @@ export default function CheckoutPage() {
                   <span>Pickup at {selectedTime}</span>
                 </div>
               </div>
+
+              {isAuthenticated && profile && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+                  <p className="font-medium text-afri-brown-700 dark:text-afri-cream-200">
+                    Logged in as {profile.name}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-afri-cream-400">
+                    Your account details have been filled automatically.
+                  </p>
+                </div>
+              )}
 
               <div className="text-afri-brown-700 dark:text-afri-cream-200 font-medium mb-4">
                 Your Information
@@ -274,6 +276,7 @@ export default function CheckoutPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
+                    readOnly={isAuthenticated}
                     className="input"
                     placeholder="john@example.com"
                     required
@@ -305,7 +308,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Step 3: Confirm */}
           {step === 3 && (
             <div className="bg-white dark:bg-afri-earth-700 rounded-xl p-6 space-y-6">
               <h2 className="font-semibold text-lg text-afri-brown-700 dark:text-afri-cream-200">
@@ -319,7 +321,6 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Order Items */}
               <div className="space-y-3">
                 {items.map(item => (
                   <div key={item.product.id} className="flex justify-between items-center pb-3 border-b border-afri-earth-200 dark:border-afri-earth-600">
@@ -338,7 +339,6 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Pickup Details */}
               <div className="bg-afri-cream-200 dark:bg-afri-earth-600 rounded-lg p-4">
                 <h3 className="font-medium text-afri-brown-700 dark:text-afri-cream-200 mb-2">
                   Pickup Details
@@ -350,7 +350,6 @@ export default function CheckoutPage() {
                 </p>
               </div>
 
-              {/* Customer Details */}
               <div className="bg-afri-cream-200 dark:bg-afri-earth-600 rounded-lg p-4">
                 <h3 className="font-medium text-afri-brown-700 dark:text-afri-cream-200 mb-2">
                   Contact Information
@@ -364,7 +363,6 @@ export default function CheckoutPage() {
                 </p>
               </div>
 
-              {/* Total */}
               <div className="flex justify-between items-center text-lg border-t border-afri-earth-200 dark:border-afri-earth-600 pt-4">
                 <span className="font-semibold text-afri-brown-700 dark:text-afri-cream-200">
                   Total
@@ -376,7 +374,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Navigation */}
           <div className="flex justify-between items-center pt-4">
             {step > 1 && (
               <button

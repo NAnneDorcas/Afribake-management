@@ -32,7 +32,6 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
@@ -48,12 +47,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
     getInitialSession()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
           setUser(session.user)
-          // Fetch profile after auth state change
           const { data } = await supabase
             .from('profiles')
             .select('*')
